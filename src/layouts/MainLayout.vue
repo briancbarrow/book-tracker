@@ -11,7 +11,7 @@
           @click="toggleLeftDrawer"
         />
 
-        <q-toolbar-title> Quasar App </q-toolbar-title>
+        <q-toolbar-title> quasar app </q-toolbar-title>
 
         <div>Quasar v{{ $q.version }}</div>
       </q-toolbar>
@@ -84,6 +84,7 @@ const linksList = [
 ];
 
 import { defineComponent, ref } from "vue";
+import useUser from "src/pinia/user";
 
 export default defineComponent({
   name: "MainLayout",
@@ -95,7 +96,10 @@ export default defineComponent({
   setup() {
     const leftDrawerOpen = ref(false);
 
+    const userStore = useUser();
+
     return {
+      userStore,
       essentialLinks: linksList,
       leftDrawerOpen,
       toggleLeftDrawer() {
