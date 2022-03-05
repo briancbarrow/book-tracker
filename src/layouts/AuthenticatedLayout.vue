@@ -11,7 +11,7 @@
           @click="toggleLeftDrawer"
         />
 
-        <q-toolbar-title>Quasar {{ authProviderUpperFirst }}</q-toolbar-title>
+        <q-toolbar-title>Book Tracker App</q-toolbar-title>
 
         <q-btn icon="person" round flat>
           <AuthAccountMenu />
@@ -47,20 +47,19 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
 import { getDefaultProvider } from "@vueauth/core";
 import AuthAccountMenu from "src/auth/components/AccountMenu/AccountMenu.vue";
 import EssentialLink from "components/EssentialLink.vue";
+import { supabase } from "../supabase";
+import { useAuthState } from "@vueauth/core";
+import useMain from "../pinia/main";
 
 const leftDrawerOpen = ref(false);
 const navigation = [
-  // title: "Quasar Awesome",
-  //   caption: "Community Quasar projects",
-  //   icon: "favorite",
-  //   link: "https://awesome.quasar.dev",
-  { title: "Lists", link: "/", icon: "home" },
+  { title: "Lists", link: "lists", icon: "home" },
   // { name: "Profile", href: "/profile", icon: UsersIcon, current: false },
-  { title: "Stats", link: "/stats", icon: "query_stats" },
+  { title: "Stats", link: "stats", icon: "query_stats" },
 ];
 
 const authProvider = getDefaultProvider();
@@ -70,4 +69,40 @@ const authProviderUpperFirst =
 function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value;
 }
+
+const { user } = useAuthState();
+const store = useMain();
+
+async function getUserLists() {
+  try {
+    let { data, error, status } = await supabase
+      .from("lists")
+      .select(`name, year, id`)
+      .eq("user_id", user.value.id);
+
+    if (error && status !== 406) throw error;
+
+    if (data) {
+      store.updateBookLists(data);
+    }
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+async function getStatuses() {
+  try {
+    const { data: statuses } = await supabase.from("readingStatus").select("*");
+    if (statuses) {
+      store.updateStatuses(statuses);
+    }
+  } catch (error) {
+    alert("error getting statuses", error.message);
+  }
+}
+
+onMounted(() => {
+  getUserLists();
+  getStatuses();
+});
 </script>

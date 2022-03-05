@@ -84,7 +84,7 @@ const linksList = [
 ];
 
 import { defineComponent, ref } from "vue";
-import useUser from "src/pinia/user";
+// import useUser from "src/pinia/user";
 
 export default defineComponent({
   name: "MainLayout",
@@ -96,10 +96,10 @@ export default defineComponent({
   setup() {
     const leftDrawerOpen = ref(false);
 
-    const userStore = useUser();
+    // const userStore = useUser();
 
     return {
-      userStore,
+      // userStore,
       essentialLinks: linksList,
       leftDrawerOpen,
       toggleLeftDrawer() {
