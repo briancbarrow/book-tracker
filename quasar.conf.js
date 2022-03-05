@@ -11,6 +11,7 @@ const ESLintPlugin = require("eslint-webpack-plugin");
 const { configure } = require("quasar/wrappers");
 
 module.exports = configure(function (ctx) {
+  require("dotenv").config();
   return {
     // https://quasar.dev/quasar-cli/supporting-ts
     supportTS: false,
@@ -44,7 +45,10 @@ module.exports = configure(function (ctx) {
     build: {
       vueRouterMode: "hash", // available values: 'hash', 'history'
 
-      env: require("dotenv").config().parsed, // Quasar environment variables
+      env: {
+        SUPABASE_URL: process.env.SUPABASE_URL,
+        SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
+      }, // Quasar environment variables
 
       // transpile: false,
       // publicPath: '/',
