@@ -1,8 +1,48 @@
 <template>
-  <!-- <h3 class="q-ml-md">{{ listData.name || "" }} - {{ listData.year || "" }}</h3> -->
-
   <div class="q-pa-md">
-    <q-markup-table flat bordered>
+    <q-table
+      :title="`${listData.name} - ${listData.year}`"
+      :columns="['Title']"
+      :rows="bookData"
+      :pagination="{
+        rowsPerPage: 20,
+        sortBy: 'title',
+      }"
+    >
+      <template v-slot:body="props">
+        <q-tr :props="props">
+          <q-td class="text-left flex items-center">
+            <q-img
+              style="width: 50px"
+              :ratio="1"
+              class="rounded-borders"
+              :src="props.row.image"
+            />
+          </q-td>
+          <q-td key="title"> {{ props.row.title }} </q-td>
+          <q-td key="author">
+            {{ props.row.author }}
+          </q-td>
+          <q-td key="status">
+            <q-badge class="text-black" :color="props.row.statusColor">
+              {{ props.row.status }}
+            </q-badge>
+          </q-td>
+          <q-td key="pages">
+            {{ props.row.pages }}
+          </q-td>
+          <q-td key="edit">
+            <q-btn
+              size="sm"
+              color="primary"
+              @click="openEditBookModal(props.row.id)"
+              >Edit</q-btn
+            >
+          </q-td>
+        </q-tr>
+      </template>
+    </q-table>
+    <!-- <q-markup-table flat bordered :grid="$q.screen.xs">
       <thead class="bg-teal">
         <tr>
           <th colspan="5">
@@ -49,7 +89,7 @@
           </td>
         </tr>
       </tbody>
-    </q-markup-table>
+    </q-markup-table> -->
   </div>
   <q-dialog ref="editDialogRef" v-model="showEditBookDialog">
     <q-card>
@@ -115,12 +155,54 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { supabase } from "../supabase";
 import useMain from "../pinia/main";
 import { useAuthState } from "@vueauth/core";
 
+const isSmall = computed(() => $q.screen.xs);
+const columns = [
+  // {
+  //   name: "id",
+  //   required: false,
+  //   label: "",
+  //   align: "left",
+  //   sortable: false,
+  //   field: "id",
+  // },
+  {
+    name: "image",
+    required: false,
+    label: "",
+    align: "left",
+    sortable: false,
+    field: (row) => row.image_url,
+  },
+  {
+    name: "title",
+    required: false,
+    label: "Title",
+    align: "left",
+    field: (row) => row.title,
+    sortable: true,
+  },
+  {
+    name: "author",
+    align: "center",
+    label: "Author",
+    field: (row) => row.author,
+    sortable: true,
+  },
+  {
+    name: "status",
+    label: "Status",
+    field: (row) => row.status,
+    sortable: true,
+  },
+  { name: "pages", label: "Pages", field: (row) => row.pages },
+  { name: "edit", label: "", field: "" },
+];
 const { user } = useAuthState();
 const alert = ref(false);
 const listData = ref({});
@@ -140,9 +222,23 @@ const tagColors = {
   4: "red-3",
 };
 const showEditBookDialog = ref(false);
+const bookData = computed(() => {
+  return books.value.map((book) => {
+    return {
+      id: book.id,
+      image: book.image_url,
+      title: book.title,
+      author: book.author,
+      status: getReadingStatus(book.reading_status_id),
+      pages: book.pages,
+      statusColor: tagColors[book.reading_status_id],
+    };
+  });
+});
 
-function openEditBookModal(book) {
+function openEditBookModal(book_id) {
   showEditBookDialog.value = true;
+  const book = books.value.find((book) => book.id === book_id);
   bookToEdit.value = book;
   selectedList.value = store.userBookLists.find(
     (list) => list.id === book.list_id
