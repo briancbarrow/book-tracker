@@ -37,7 +37,7 @@ export default boot(({ router }) => {
       {
         path: "",
         name: "dashboard",
-        component: () => import("src/pages/UserDashboard.vue"),
+        component: () => import("src/pages/Lists.vue"),
         meta: { authOnly: true },
       },
     ],

@@ -41,14 +41,14 @@
     <q-select v-model="selectedYear" outlined :options="years" label="Year">
     </q-select>
   </div>
-  <div class="q-pa-md row justify-between items-start q-gutter-xl">
+  <div class="q-pa-md row justify-between items-start">
     <q-card
       clickable
       v-for="list in selectedYearLists"
       :key="list.id"
       tag="a"
       :href="`/#/lists/${list.id}`"
-      class="my-card col-3 self-start"
+      class="my-card q-my-sm col-12 col-sm-3 self-start"
     >
       <q-card-section class="bg-primary text-white">
         <div class="text-h6">{{ list.name }}</div>
