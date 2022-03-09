@@ -240,7 +240,6 @@ const bookToAdd = ref({
   author: null,
   status: { id: 1, name: "To Read" },
   pages: null,
-  statusColor: "white",
 });
 const bookSearch = ref("");
 const googlePredictions = ref([]);
@@ -387,6 +386,14 @@ async function addBook() {
   console.log("bookToAdd", bookToAdd.value);
   await supabase.from("books").insert(book);
   addDialogRef.value.hide();
+  bookToAdd.value = {
+    imageUrl: null,
+    title: null,
+    author: null,
+    status: { id: 1, name: "To Read" },
+    pages: null,
+  };
+  bookSearch.value = "";
   getListBooks();
 }
 
