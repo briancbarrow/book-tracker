@@ -2,7 +2,7 @@
   <div class="q-pa-md">
     <q-table
       :title="`${listData.name} - ${listData.year}`"
-      :columns="['Title']"
+      :columns="columns"
       :rows="bookData"
       :pagination="{
         rowsPerPage: 20,
@@ -49,6 +49,15 @@
               >Edit</q-btn
             >
           </q-td>
+          <q-td key="delete">
+            <q-btn
+              size="sm"
+              color="negative"
+              @click="openDeleteBookModal(props.row.id)"
+            >
+              <q-icon name="delete" />
+            </q-btn>
+          </q-td>
         </q-tr>
       </template>
     </q-table>
@@ -93,6 +102,27 @@
           <q-btn class="q-mt-md" color="cyan" @click="updateBook">Update</q-btn>
         </q-form>
       </q-card-section>
+    </q-card>
+  </q-dialog>
+  <q-dialog v-model="deleteAlert">
+    <q-card>
+      <q-card-section>
+        <div class="text-h6">Are you sure?</div>
+      </q-card-section>
+
+      <q-card-section class="q-pt-none">
+        Do you really want to delete this book?
+      </q-card-section>
+
+      <q-card-section>
+        <p>{{ bookToDelete.title }}</p>
+        <p>Pages: {{ bookToDelete.pages }}</p>
+      </q-card-section>
+
+      <q-card-actions align="right">
+        <q-btn color="red" @click="deleteBook">Delete</q-btn>
+        <q-btn flat label="Cancel" color="primary" v-close-popup />
+      </q-card-actions>
     </q-card>
   </q-dialog>
 
@@ -183,14 +213,6 @@ import debounce from "lodash/debounce";
 
 const isSmall = computed(() => $q.screen.xs);
 const columns = [
-  // {
-  //   name: "id",
-  //   required: false,
-  //   label: "",
-  //   align: "left",
-  //   sortable: false,
-  //   field: "id",
-  // },
   {
     name: "image",
     required: false,
@@ -209,7 +231,7 @@ const columns = [
   },
   {
     name: "author",
-    align: "center",
+    align: "left",
     label: "Author",
     field: (row) => row.author,
     sortable: true,
@@ -219,12 +241,20 @@ const columns = [
     label: "Status",
     field: (row) => row.status,
     sortable: true,
+    align: "left",
   },
-  { name: "pages", label: "Pages", field: (row) => row.pages },
+  {
+    name: "pages",
+    label: "Pages",
+    field: (row) => row.pages,
+    sortable: true,
+    align: "left",
+  },
   { name: "edit", label: "", field: "" },
+  { name: "delete", label: "", field: "" },
 ];
 const { user } = useAuthState();
-const alert = ref(false);
+const deleteAlert = ref(false);
 const listData = ref({});
 const selectedList = ref(null);
 const selectedStatus = ref({ id: 1, name: "To Read" });
@@ -234,6 +264,7 @@ const route = useRoute();
 const router = useRouter();
 const store = useMain();
 const bookToEdit = ref(null);
+const bookToDelete = ref(null);
 const bookToAdd = ref({
   imageUrl: null,
   title: null,
@@ -306,6 +337,11 @@ function openEditBookModal(book_id) {
   selectedStatus.value = store.statuses.find(
     (status) => status.id === book.reading_status_id
   );
+}
+function openDeleteBookModal(book_id) {
+  deleteAlert.value = true;
+  const book = books.value.find((book) => book.id === book_id);
+  bookToDelete.value = book;
 }
 
 function getReadingStatus(id) {
@@ -395,6 +431,13 @@ async function addBook() {
   };
   bookSearch.value = "";
   getListBooks();
+}
+
+async function deleteBook() {
+  await supabase.from("books").delete().eq("id", bookToDelete.value.id);
+  deleteAlert.value = false;
+  getListBooks();
+  bookToDelete.value = null;
 }
 
 onMounted(() => {
