@@ -9,6 +9,16 @@
         sortBy: 'title',
       }"
     >
+      <template v-slot:top-right>
+        <q-btn
+          @click="showAddBookDialog = true"
+          label="Add Book"
+          icon="add"
+          color="primary"
+          aria-label="Add new book"
+          class="q-mt-md"
+        ></q-btn>
+      </template>
       <template v-slot:body="props">
         <q-tr :props="props">
           <q-td class="text-left flex items-center">
@@ -34,7 +44,7 @@
           <q-td key="edit">
             <q-btn
               size="sm"
-              color="primary"
+              color="secondary"
               @click="openEditBookModal(props.row.id)"
               >Edit</q-btn
             >
@@ -57,7 +67,6 @@
       <q-card-section>
         <q-form class="editForm">
           <h5>Edit Book</h5>
-          <!-- <q-input label="Search for a Book" hint="Harry Potter" v-model="bookSearch" /> -->
           <q-input label="Title" v-model="bookToEdit.title" />
           <q-input label="Author" v-model="bookToEdit.author" />
           <q-select
@@ -116,14 +125,91 @@
       </q-card-actions>
     </q-card>
   </q-dialog>
+
+  <q-dialog ref="addDialogRef" v-model="showAddBookDialog">
+    <q-card>
+      <q-card-section>
+        <q-form class="addForm">
+          <h5>Add Book</h5>
+          <q-input label="Search for a Book" v-model="bookSearch" />
+          <q-list bordered separator>
+            <q-item
+              v-for="book in googlePredictions"
+              :key="book.id"
+              clickable
+              @click="populateFields(book)"
+              v-ripple
+            >
+              <q-item-section avatar>
+                <q-avatar>
+                  <img
+                    v-if="
+                      book.volumeInfo.imageLinks &&
+                      book.volumeInfo.imageLinks.smallThumbnail
+                    "
+                    :src="book.volumeInfo.imageLinks.smallThumbnail"
+                  />
+                  <q-icon v-else name="menu_book" />
+                </q-avatar>
+              </q-item-section>
+
+              <q-item-section>
+                <p class="text-weight-bold">{{ book.volumeInfo.title }}</p>
+                <p>
+                  {{
+                    book.volumeInfo.authors ? book.volumeInfo.authors[0] : ""
+                  }}
+                </p>
+              </q-item-section>
+            </q-item>
+          </q-list>
+          <q-input label="Title" v-model="bookToAdd.title" />
+          <q-input label="Author" v-model="bookToAdd.author" />
+          <q-select
+            label="List"
+            v-model="selectedList"
+            :options="store.userBookLists"
+            :option-label="(item) => (item === null ? 'Null value' : item.name)"
+          >
+            <template v-slot:option="scope">
+              <q-item v-bind="scope.itemProps">
+                <q-item-section>
+                  <q-item-label>{{ scope.opt.name }}</q-item-label>
+                  <q-item-label caption>{{ scope.opt.year }}</q-item-label>
+                </q-item-section>
+              </q-item>
+            </template>
+          </q-select>
+          <q-select
+            label="Status"
+            v-model="selectedStatus"
+            :options="store.statuses"
+            :option-label="(item) => (item === null ? 'Null value' : item.name)"
+          >
+            <template v-slot:option="scope">
+              <q-item v-bind="scope.itemProps">
+                <q-item-section>
+                  <q-item-label>{{ scope.opt.name }}</q-item-label>
+                </q-item-section>
+              </q-item>
+            </template>
+          </q-select>
+          <q-input label="Pages" v-model="bookToAdd.pages" />
+          <q-btn class="q-mt-md" color="cyan" @click="addBook">Add</q-btn>
+        </q-form>
+      </q-card-section>
+    </q-card>
+  </q-dialog>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { supabase } from "../supabase";
+import axios from "axios";
 import useMain from "../pinia/main";
 import { useAuthState } from "@vueauth/core";
+import debounce from "lodash/debounce";
 
 const isSmall = computed(() => $q.screen.xs);
 const columns = [
@@ -171,7 +257,7 @@ const { user } = useAuthState();
 const deleteAlert = ref(false);
 const listData = ref({});
 const selectedList = ref(null);
-const selectedStatus = ref(null);
+const selectedStatus = ref({ id: 1, name: "To Read" });
 const books = ref([]);
 const loading = ref(true);
 const route = useRoute();
@@ -179,7 +265,17 @@ const router = useRouter();
 const store = useMain();
 const bookToEdit = ref(null);
 const bookToDelete = ref(null);
+const bookToAdd = ref({
+  imageUrl: null,
+  title: null,
+  author: null,
+  status: { id: 1, name: "To Read" },
+  pages: null,
+});
+const bookSearch = ref("");
+const googlePredictions = ref([]);
 const editDialogRef = ref(null);
+const addDialogRef = ref(null);
 const tagColors = {
   1: "white",
   2: "amber-3",
@@ -187,19 +283,49 @@ const tagColors = {
   4: "red-3",
 };
 const showEditBookDialog = ref(false);
+const showAddBookDialog = ref(false);
 const bookData = computed(() => {
-  return books.value.map((book) => {
-    return {
-      id: book.id,
-      image: book.image_url,
-      title: book.title,
-      author: book.author,
-      status: getReadingStatus(book.reading_status_id),
-      pages: book.pages,
-      statusColor: tagColors[book.reading_status_id],
-    };
-  });
+  if (store.statuses.length > 0) {
+    return books.value.map((book) => {
+      return {
+        id: book.id,
+        image: book.image_url,
+        title: book.title,
+        author: book.author,
+        status: getReadingStatus(book.reading_status_id),
+        pages: book.pages,
+        statusColor: tagColors[book.reading_status_id],
+      };
+    });
+  } else {
+    return [];
+  }
 });
+
+const getGoogleBookList = debounce(async function () {
+  const predictions = await axios.get(
+    `https://www.googleapis.com/books/v1/volumes?q=intitle:${bookSearch.value}&maxResults=5`
+  );
+
+  googlePredictions.value = predictions.data.items;
+}, 500);
+
+watch(bookSearch, (currentValue, oldValue) => {
+  getGoogleBookList();
+});
+
+function populateFields(book) {
+  bookToAdd.value.title = book.volumeInfo.title;
+  bookToAdd.value.author = book.volumeInfo.authors[0];
+  bookToAdd.value.pages = book.volumeInfo.pageCount;
+  bookToAdd.value.imageUrl =
+    book.volumeInfo.imageLinks && book.volumeInfo.imageLinks.smallThumbnail
+      ? book.volumeInfo.imageLinks.smallThumbnail
+      : "";
+  selectedList.value = listData.value;
+  selectedStatus.value = { id: 1, name: "To Read" };
+  googlePredictions.value = [];
+}
 
 function openEditBookModal(book_id) {
   showEditBookDialog.value = true;
@@ -255,7 +381,6 @@ async function getListBooks() {
 }
 
 async function updateBook() {
-  console.log("Book to edit", bookToEdit.value);
   if (
     !bookToEdit.value.title ||
     !bookToEdit.value.author ||
@@ -276,6 +401,37 @@ async function updateBook() {
   editDialogRef.value.hide();
   getListBooks();
 }
+async function addBook() {
+  console.log("Book to add", bookToAdd.value);
+  if (
+    !bookToAdd.value.title ||
+    !bookToAdd.value.author ||
+    !bookToAdd.value.pages
+  )
+    return;
+  const book = {
+    title: bookToAdd.value.title,
+    author: bookToAdd.value.author,
+    pages: bookToAdd.value.pages,
+    reading_status_id: selectedStatus.value.id,
+    list_id: selectedList.value.id,
+    image_url: bookToAdd.value.imageUrl,
+    user_id: user.value.id,
+  };
+  console.log("user", user.value);
+  console.log("bookToAdd", bookToAdd.value);
+  await supabase.from("books").insert(book);
+  addDialogRef.value.hide();
+  bookToAdd.value = {
+    imageUrl: null,
+    title: null,
+    author: null,
+    status: { id: 1, name: "To Read" },
+    pages: null,
+  };
+  bookSearch.value = "";
+  getListBooks();
+}
 
 async function deleteBook() {
   await supabase.from("books").delete().eq("id", bookToDelete.value.id);
@@ -294,7 +450,7 @@ onMounted(() => {
 table tbody td {
   height: unset;
 }
-.q-form.editForm {
+.q-dialog .q-form {
   min-width: 370px;
 }
 </style>
