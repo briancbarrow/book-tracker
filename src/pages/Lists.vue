@@ -100,8 +100,7 @@ function onSubmit(e) {
   e.preventDefault();
   createNewList();
 }
-function onReset(e) {
-  e.preventDefault();
+function onReset() {
   name.value = "";
   year.value = "";
   resetNewListValidation();
@@ -114,7 +113,6 @@ function resetNewListValidation() {
 
 async function createNewList() {
   try {
-    console.log("user", user.value);
     let { data, error } = await supabase
       .from("lists")
       .insert([{ name: name.value, year: year.value, user_id: user.value.id }]);
