@@ -2,7 +2,7 @@
   <div class="q-pa-md">
     <q-table
       :title="`${listData.name} - ${listData.year}`"
-      :columns="['Title']"
+      :columns="columns"
       :rows="bookData"
       :pagination="{
         rowsPerPage: 20,
@@ -39,57 +39,18 @@
               >Edit</q-btn
             >
           </q-td>
+          <q-td key="delete">
+            <q-btn
+              size="sm"
+              color="negative"
+              @click="openDeleteBookModal(props.row.id)"
+            >
+              <q-icon name="delete" />
+            </q-btn>
+          </q-td>
         </q-tr>
       </template>
     </q-table>
-    <!-- <q-markup-table flat bordered :grid="$q.screen.xs">
-      <thead class="bg-teal">
-        <tr>
-          <th colspan="5">
-            <div class="row no-wrap items-center">
-              <div class="text-h4 text-white">
-                {{ listData.name || "" }} - {{ listData.year || "" }}
-              </div>
-            </div>
-          </th>
-        </tr>
-        <tr class="text-white">
-          <th class="text-left">Title</th>
-          <th class="text-right">Author</th>
-          <th class="text-right">Status</th>
-          <th class="text-right">Pages</th>
-          <th class="text-right"></th>
-        </tr>
-      </thead>
-      <tbody class="bg-grey-3">
-        <tr v-for="book in books" :key="book.id">
-          <td class="text-left flex items-center">
-            <q-img
-              style="width: 50px"
-              :ratio="1"
-              class="rounded-borders"
-              :src="book.image_url"
-            />
-            <div class="text-h6 q-ml-md">{{ book.title }}</div>
-          </td>
-          <td class="text-right">{{ book.author }}</td>
-          <td class="text-right">
-            <q-badge
-              class="text-black"
-              :color="tagColors[book.reading_status_id]"
-            >
-              {{ getReadingStatus(book.reading_status_id) }}
-            </q-badge>
-          </td>
-          <td class="text-right">{{ book.pages }}</td>
-          <td class="text-right">
-            <q-btn size="sm" color="primary" @click="openEditBookModal(book)"
-              >Edit</q-btn
-            >
-          </td>
-        </tr>
-      </tbody>
-    </q-markup-table> -->
   </div>
   <q-dialog ref="editDialogRef" v-model="showEditBookDialog">
     <q-card>
@@ -134,21 +95,24 @@
       </q-card-section>
     </q-card>
   </q-dialog>
-  <q-dialog v-model="alert">
+  <q-dialog v-model="deleteAlert">
     <q-card>
       <q-card-section>
-        <div class="text-h6">Alert</div>
+        <div class="text-h6">Are you sure?</div>
       </q-card-section>
 
       <q-card-section class="q-pt-none">
-        Lorem ipsum dolor sit amet consectetur adipisicing elit. Rerum
-        repellendus sit voluptate voluptas eveniet porro. Rerum blanditiis
-        perferendis totam, ea at omnis vel numquam exercitationem aut, natus
-        minima, porro labore.
+        Do you really want to delete this book?
+      </q-card-section>
+
+      <q-card-section>
+        <p>{{ bookToDelete.title }}</p>
+        <p>Pages: {{ bookToDelete.pages }}</p>
       </q-card-section>
 
       <q-card-actions align="right">
-        <q-btn flat label="OK" color="primary" v-close-popup />
+        <q-btn color="red" @click="deleteBook">Delete</q-btn>
+        <q-btn flat label="Cancel" color="primary" v-close-popup />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -163,14 +127,6 @@ import { useAuthState } from "@vueauth/core";
 
 const isSmall = computed(() => $q.screen.xs);
 const columns = [
-  // {
-  //   name: "id",
-  //   required: false,
-  //   label: "",
-  //   align: "left",
-  //   sortable: false,
-  //   field: "id",
-  // },
   {
     name: "image",
     required: false,
@@ -189,7 +145,7 @@ const columns = [
   },
   {
     name: "author",
-    align: "center",
+    align: "left",
     label: "Author",
     field: (row) => row.author,
     sortable: true,
@@ -199,12 +155,20 @@ const columns = [
     label: "Status",
     field: (row) => row.status,
     sortable: true,
+    align: "left",
   },
-  { name: "pages", label: "Pages", field: (row) => row.pages },
+  {
+    name: "pages",
+    label: "Pages",
+    field: (row) => row.pages,
+    sortable: true,
+    align: "left",
+  },
   { name: "edit", label: "", field: "" },
+  { name: "delete", label: "", field: "" },
 ];
 const { user } = useAuthState();
-const alert = ref(false);
+const deleteAlert = ref(false);
 const listData = ref({});
 const selectedList = ref(null);
 const selectedStatus = ref(null);
@@ -214,6 +178,7 @@ const route = useRoute();
 const router = useRouter();
 const store = useMain();
 const bookToEdit = ref(null);
+const bookToDelete = ref(null);
 const editDialogRef = ref(null);
 const tagColors = {
   1: "white",
@@ -246,6 +211,11 @@ function openEditBookModal(book_id) {
   selectedStatus.value = store.statuses.find(
     (status) => status.id === book.reading_status_id
   );
+}
+function openDeleteBookModal(book_id) {
+  deleteAlert.value = true;
+  const book = books.value.find((book) => book.id === book_id);
+  bookToDelete.value = book;
 }
 
 function getReadingStatus(id) {
@@ -305,6 +275,13 @@ async function updateBook() {
   await supabase.from("books").update(book).eq("id", bookToEdit.value.id);
   editDialogRef.value.hide();
   getListBooks();
+}
+
+async function deleteBook() {
+  await supabase.from("books").delete().eq("id", bookToDelete.value.id);
+  deleteAlert.value = false;
+  getListBooks();
+  bookToDelete.value = null;
 }
 
 onMounted(() => {
