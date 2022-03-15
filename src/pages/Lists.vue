@@ -16,7 +16,12 @@
         v-model="year"
         label="List Year"
         lazy-rules
-        :rules="[(val) => (val && val.length > 0) || 'Please type something']"
+        :rules="[
+          (val) => !!val || '* Required',
+          (val) => val.length === 4 || 'Must be 4 characters',
+          (val) => /^[0-9]+$/.test(val) || 'Must be a number',
+        ]"
+        class="q-mb-sm"
       />
       <div>
         <q-btn label="Submit" type="submit" color="primary" />
