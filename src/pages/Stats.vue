@@ -1,28 +1,30 @@
 <template>
-  <div class="q-pa-md text-center" style="max-width: 600px">
+  <div class="q-pa-md text-center">
     <div class="flex items-start justify-start q-mt-md q-ml-md">
       <q-select v-model="selectedYear" outlined :options="years" label="Year">
       </q-select>
     </div>
   </div>
 
-  <!-- <div>
-    <dl class="row justify-center q-gutter-md">
-      <div v-for="item in stats" :key="item.name" class="stats">
-        <dt class="text-sm font-medium text-gray-500 truncate">
-          {{ item.name }}
-        </dt>
-        <dd class="mt-1 text-3xl font-semibold text-gray-900">
-          {{ selectedYear }}
-        </dd>
+  <div class="q-pa-md">
+    <h3>Stats for {{ selectedYear }}</h3>
+    <dl class="stats-container q-mt-md">
+      <div class="q-px-sm q-py-md shadow-2 stats-card">
+        <dt class="text-caption text-grey-7">Total books read this year</dt>
+        <dd class="text-h5 text-grey-9">{{ finishedBookCount }}</dd>
+      </div>
+      <div class="q-px-sm q-py-md shadow-1 stats-card">
+        <dt class="text-caption text-grey-7">Total pages read this year</dt>
+        <dd class="text-h5 text-grey-9">{{ finishedPageCount }}</dd>
       </div>
     </dl>
-  </div> -->
+  </div>
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import useMain from "../pinia/main";
+import { supabase } from "../supabase";
 
 const store = useMain();
 
@@ -43,23 +45,49 @@ const selectedYearLists = computed(() => {
   });
 });
 
-const bookData = computed(() => {
-  if (store.statuses.length > 0) {
-    return books.value.map((book) => {
-      return {
-        id: book.id,
-        status: getReadingStatus(book.reading_status_id),
-        pages: book.pages,
-      };
-    });
-  } else {
-    return [];
-  }
+const finished = ref([]);
+const finishedBookCount = computed(() => {
+  return finished.value.length;
+});
+const finishedPageCount = computed(() => {
+  return finished.value.reduce((acc, book) => {
+    return acc + book.pages;
+  }, 0);
 });
 
-// Here I am thinking that using the store is the best way to get the data we need.
+const listArray = computed(() => {
+  return selectedYearLists.value.map((list) => {
+    return list.id;
+  });
+});
 
-// I just need to work through how to combine the pages to get the total, and also the total amount of books.
+async function getListBooks(listArray) {
+  try {
+    let { data } = await supabase
+      .from("books")
+      .select()
+      .in("list_id", listArray);
+    finished.value = data;
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+watch(listArray, async (newValue, oldValue) => {
+  return await getListBooks(newValue);
+});
 </script>
 
-<style></style>
+<style>
+.stats-container {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+  max-width: 600px;
+}
+
+.stats-card {
+  border-radius: 0.5rem;
+  max-width: 350px;
+}
+</style>
