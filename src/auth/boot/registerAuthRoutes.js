@@ -68,4 +68,17 @@ export default boot(({ router }) => {
       },
     ],
   });
+
+  router.addRoute("/", {
+    path: "/stats",
+    component: () => import("layouts/AuthenticatedLayout.vue"),
+    children: [
+      {
+        path: "",
+        name: "stats",
+        component: () => import("src/pages/Stats.vue"),
+        meta: { authOnly: true },
+      },
+    ],
+  });
 });
