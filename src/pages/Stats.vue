@@ -47,12 +47,15 @@ const selectedYearLists = computed(() => {
 
 const finished = ref([]);
 const finishedBookCount = computed(() => {
-  return finished.value.length;
+  return new Intl.NumberFormat("en-US", { style: "decimal" }).format(
+    finished.value.length
+  );
 });
 const finishedPageCount = computed(() => {
-  return finished.value.reduce((acc, book) => {
+  const reduced = finished.value.reduce((acc, book) => {
     return acc + book.pages;
   }, 0);
+  return new Intl.NumberFormat("en-US", { style: "decimal" }).format(reduced);
 });
 
 const listArray = computed(() => {
@@ -73,9 +76,13 @@ async function getListBooks(listArray) {
   }
 }
 
-watch(listArray, async (newValue, oldValue) => {
-  return await getListBooks(newValue);
-});
+watch(
+  listArray,
+  async (newValue, oldValue) => {
+    return await getListBooks(newValue);
+  },
+  { immediate: true }
+);
 </script>
 
 <style>
