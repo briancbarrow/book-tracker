@@ -69,7 +69,7 @@ async function getListBooks(listArray) {
     let { data } = await supabase
       .from("books")
       .select()
-      .eq("reading_status_id", 2)
+      .eq("reading_status_id", 3)
       .in("list_id", listArray);
     finished.value = data;
   } catch (err) {
